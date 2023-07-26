@@ -1,0 +1,76 @@
+pipeline {
+    agent {
+        kubernetes {
+            cloud 'kubernetes'
+            yaml '''
+---
+kind: pod
+apiVersion: v1
+metadata:
+  labels:
+    k8s-app: jenkinsagent
+  name: jenkinsagent
+  namespace: devops
+spec:
+  containers:
+    - name: jenkinsagent
+      image: jenkinsci/jnlp-slave:3.36-1
+      securityContext:
+        privileged: true
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
+          cpu: 500m
+          memory: 512Mi
+      volumeMounts:
+        - name: jenkinsagent-workdir
+          mountPath: /home/jenkins/workspace
+        - name: buildtools
+          mountPath: /home/jenkins/buildtools
+        - name: dockersock
+          mountPath: "/var/run/docker.sock"
+        - name: dockercmd
+          mountPath: /usr/bin/docker
+        - name: kubectlconfig
+          mountPath: /home/jenkins/.kube/config
+        - name: kubectlcmd
+          mountPath: /usr/bin/kubectl
+      env:
+        - name: JENKINS_AGENT_WORKDIR
+          value: /home/jenkins/workspace
+  volumes:
+    - name: jenkinsagent-workdir
+      persistentVolumeClaim:
+        claimName: jenkins-pvc
+    - name: buildtools
+      hostPath:
+        path: /usr/local/buildtools
+        type: Directory
+    - name: kubectlconfig
+      hostPath:
+        path: /etc/kubernetes/
+    - name: kubectlcmd
+      hostPath:
+        path: /usr/bin/kubectl
+   - name: dockersock
+      hostPath:
+        path: /var/run/docker.sock
+    - name: dockercmd
+      hostPath:
+        path: /usr/bin/docker
+'''
+    }
+}
+  stages{
+    stage("test"){
+      steps{
+        script{
+          sh "sleep 300"
+        }
+      }
+    }
+  }
+}
